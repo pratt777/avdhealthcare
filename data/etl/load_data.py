@@ -4,41 +4,39 @@ from pyspark.sql import SparkSession
 import datetime
 import json
 
-spark = SparkSession.builder \
-                    .appName("Healthcare Ingestion") \
-                    .getOrCreate()
-
 # Initialize GCS & BigQuery Clients
 storage_client = storage.Client()
 bq_client = bigquery.Client()
 
 # Google Cloud Storage (GCS) Configuration
-GCS_BUCKET = "avd-bucket-10"
+GCS_BUCKET = "pratap-1"
 HOSPITAL_NAME = "hospital"
 LANDING_PATH = f"gs://{GCS_BUCKET}/landing/{HOSPITAL_NAME}/"
 ARCHIVE_PATH = f"gs://{GCS_BUCKET}/landing/{HOSPITAL_NAME}/archive/"
 CONFIG_FILE_PATH = f"gs://{GCS_BUCKET}/configs/config.csv"
 
 # BigQuery Configuration
-BQ_PROJECT = "feisty-flow-466306-f6"
-BQ_AUDIT_TABLE = f"{BQ_PROJECT}.temp_dataset.audit_log"
-BQ_LOG_TABLE = f"{BQ_PROJECT}.temp_dataset.pipeline_logs"
+BQ_PROJECT = "pratap-dev-2026-01-483206"
+BQ_AUDIT_TABLE = f"{BQ_PROJECT}.temp_dataset2.audit_log"
+BQ_LOG_TABLE = f"{BQ_PROJECT}.temp_dataset2.pipeline_logs"
 BQ_TEMP_PATH = f"{GCS_BUCKET}/temp/"  
 
 # MySQL Configuration
 MYSQL_CONFIG = {
-    "url": "jdbc:mysql://34.16.84.227:3306/hospital_db?useSSL=false&allowPublicKeyRetrieval=true",
+    "url": "jdbc:mysql://34.69.140.226/avd?useSSL=false&allowPublicKeyRetrieval=true",
     "driver": "com.mysql.cj.jdbc.Driver",
-    "user": "user1",
-    "password": "User1#1234"
+    "user": "pratap007",
+    "password": "Pratap@123"
 }
-
 # Function to Read Config File from GCS
 def read_config_file():
     df = spark.read.csv(CONFIG_FILE_PATH, header=True)
     return df
 
 # Logging Mechanism
+
+#  https://chatgpt.com/share/69928f69-48e4-8009-a760-4438cfc21716
+
 log_entries = []
 
 def log_event(event_type, message, table=None):
@@ -77,7 +75,7 @@ def get_latest_watermark(table_name):
     query = f"""
         SELECT MAX(load_timestamp) AS latest_timestamp
         FROM `{BQ_AUDIT_TABLE}`
-        WHERE tablename = '{table_name}' and data_source = "hospital_db"
+        WHERE tablename = '{table_name}' and data_source = "healthcare"
     """
     query_job = bq_client.query(query)
     result = query_job.result()
@@ -152,7 +150,7 @@ def extract_and_save_to_landing(table, load_type, watermark_col):
 
         # Insert Audit Entry (Always update audit log with current run info)
         audit_df = spark.createDataFrame([
-            ("hospital_db", table, load_type, record_count, datetime.datetime.now(), "SUCCESS")], 
+            ("healthcare", table, load_type, record_count, datetime.datetime.now(), "SUCCESS")], 
             ["data_source", "tablename", "load_type", "record_count", "load_timestamp", "status"])
 
         (audit_df.write.format("bigquery")
@@ -169,7 +167,7 @@ def extract_and_save_to_landing(table, load_type, watermark_col):
         
         # Insert Audit Entry with failure status
         audit_df = spark.createDataFrame([
-            ("hospital_db", table, load_type, 0, datetime.datetime.now(), "FAILURE")], 
+            ("healthcare", table, load_type, 0, datetime.datetime.now(), "FAILURE")], 
             ["data_source", "tablename", "load_type", "record_count", "load_timestamp", "status"])
 
         (audit_df.write.format("bigquery")
@@ -183,8 +181,8 @@ def extract_and_save_to_landing(table, load_type, watermark_col):
 config_df = read_config_file()
 
 for row in config_df.collect():
-    if row["is_active"] == '1' and row["database"] == "hospital_db": 
-        db, src, table, load_type, watermark, _, targetpath = row
+    if row["is_active"] == '1' and row["database"] == "avd": 
+        db_instance, database, table, load_type, watermark, is_active = row
         extract_and_save_to_landing(table, load_type, watermark)
 
 save_logs_to_gcs()
