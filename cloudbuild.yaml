@@ -16,5 +16,5 @@ options:
 
 substitutions:
   _DAGS_DIRECTORY: "airflow/"
-  _DAGS_BUCKET: "us-central1-airflow-1-c60c72f4-bucket"
+  _DAGS_BUCKET: "us-central1-airflow-1-1e324049-bucket"  # Replace with your actual bucket name
   _DATA_DIRECTORY: "data/"
